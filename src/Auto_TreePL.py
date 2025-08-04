@@ -171,10 +171,10 @@ def main():
     
     # Define required command line arguments:
     # -it/--input_treefile: Input tree file in Newick/NEXUS format (required)
-    # -ic/--input_config: Configuration file with calibration points (required)
+    # -ci/--calibration_info: Configuration file with calibration points (required)
     # -o/--output: Output file name for dated tree (default: "output_dated.tre")
     parser.add_argument("-it", "--input_tree", required=True, help="Input tree file (Newick/NEXUS format)")
-    parser.add_argument("-ic", "--input_config", required=True, help="Calibration points config file (.config format)")
+    parser.add_argument("-ci", "--calibration_info", required=True, help="Calibration points config file (.config format)")
     parser.add_argument("-ns", "--num_sites", required=True, type=int, help="the number sites from your supermatrix, which is used to estimated the tree above")
     parser.add_argument("-o", "--output", default="output_dated.tre", help="Path to the output time-tree file (default: output_dated.tre)")
     parser.add_argument("-nt", "--nthreads", default=1, type=int, help="Number of threads for running TreePL (default: 1)")
@@ -187,8 +187,8 @@ def main():
     if not os.path.exists(args.input_tree):
         raise FileNotFoundError(f"Input tree file not found: {args.input_tree}")
     # Check if config file exists, raise error if not found
-    if not os.path.exists(args.input_config):
-        raise FileNotFoundError(f"Calibration config file not found: {args.input_config}")
+    if not os.path.exists(args.calibration_info):
+        raise FileNotFoundError(f"Calibration config file not found: {args.calibration_info}")
     # Check if the number of sites is an integer and greater than 0
     if not isinstance(args.num_sites, int):
         raise ValueError("The number of sites must be an integer")
@@ -206,7 +206,7 @@ def main():
     # Step 2: Generate temporary cv config file for TreePL
     print("[STEP 1/7] Generating cross-validation config...")
     temp_cv_config = "treepl_cv.config"
-    config_cv(args.input_config, temp_cv_config, args.input_tree, args.num_sites, args.nthreads)
+    config_cv(args.calibration_info, temp_cv_config, args.input_tree, args.num_sites, args.nthreads)
     print(f"✓ Cross-validation config file saved to {temp_cv_config}")
 
     # Step 3: Run TreePL cross-validation
@@ -230,7 +230,7 @@ def main():
     # Step 5: Generate temporary prime config file for TreePL
     print("\n[STEP 4/7] Generating temporary prime config file...")
     temp_prime_config = "treepl_prime.config"
-    config_prime(args.input_config, temp_prime_config, args.input_tree, args.num_sites, args.nthreads, smooth)
+    config_prime(args.calibration_info, temp_prime_config, args.input_tree, args.num_sites, args.nthreads, smooth)
     print(f"✓ Prime config file saved to {temp_prime_config}")
 
     # Step 6: Run TreePL prime
@@ -248,7 +248,7 @@ def main():
     # Step 7: Generating temporary date config file
     print(f"\n[STEP 6/7] Generating temporary date config file...")
     temp_dated_config = "treepl_dated.config"
-    config_dated(args.input_config, temp_dated_config, args.input_tree, args.num_sites, args.nthreads, smooth, args.output, last_five_lines)
+    config_dated(args.calibration_info, temp_dated_config, args.input_tree, args.num_sites, args.nthreads, smooth, args.output, last_five_lines)
     print(f"✓ Date config file saved to {temp_dated_config}")
 
     # Step 8: run dating
