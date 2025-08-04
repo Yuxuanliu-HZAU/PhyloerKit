@@ -224,7 +224,7 @@ def main():
     if not os.path.exists(temp_cv_results):
         print(f"✗ Error: Results file {temp_cv_results} not found!")
         sys.exit(1)
-    smooth = int(find_min_chisq_smooth(temp_cv_results))
+    smooth = find_min_chisq_smooth(temp_cv_results)
     print(f"✓ Optimal smooth value found: {smooth}")
 
     # Step 5: Generate temporary prime config file for TreePL
