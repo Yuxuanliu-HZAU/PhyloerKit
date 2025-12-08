@@ -558,7 +558,7 @@ def create_plotly_html_heatmap(df, args):
     main_heatmap_domain_end = top_bar_domain_start - (GAP_between_top_bar_heatmap / total_height)
     fig.update_layout(
         font_family="Arial",
-        plot_bgcolor="rgb(8,8,8)",
+        plot_bgcolor="white",
         title=dict(
             text=html_title,
             x=0.5,
