@@ -552,7 +552,7 @@ def create_plotly_html_heatmap(df, args):
 
     # Control relative heights similar to stage2_report: fixed top bar height
     TOP_BAR_HEIGHT = 88
-    GAP_between_top_bar_heatmap = 8
+    GAP_between_top_bar_heatmap = 6
     total_height = 180 + 18 * num_samples
     top_bar_domain_start = 1 - (TOP_BAR_HEIGHT / total_height)
     main_heatmap_domain_end = top_bar_domain_start - (GAP_between_top_bar_heatmap / total_height)
