@@ -350,6 +350,18 @@ def create_plotly_html_heatmap(df, args):
 
     samples = recovery_rates['Sample/Locus'].tolist()
     loci = list(recovery_rates.columns[1:])
+    
+    # Check if dataset is large and apply hover text optimization
+    num_samples = len(samples)
+    num_loci = len(loci)
+    is_large_dataset = num_loci > 500 or num_samples > 300
+    
+    if is_large_dataset:
+        if num_loci > 500:
+            logger.warning(f"Large dataset detected ({num_loci} loci > threshold 500). Using simplified hover text to reduce file size.")
+        if num_samples > 300:
+            logger.warning(f"Large dataset detected ({num_samples} samples > threshold 300). Using simplified hover text to reduce file size.")
+    
     # Convert ratios to percentage for display
     z_matrix = (recovery_rates[loci].astype(float) * 100.0).values.tolist()
 
@@ -367,6 +379,7 @@ def create_plotly_html_heatmap(df, args):
         locus_totals = []
 
     # Build hover text with length and coverage
+    # Simplify hover text for large datasets to reduce file size
     def build_hover_matrix(current_samples, current_loci, current_z, row_index_map=None, col_index_map=None):
         hover = []
         for new_i, sample in enumerate(current_samples):
@@ -378,9 +391,17 @@ def create_plotly_html_heatmap(df, args):
                 if locus in length_values.columns and orig_i < len(length_values.index):
                     length_val = float(length_values.loc[length_values.index[orig_i], locus])
                 cov_val = float(current_z[new_i][new_j])
-                row_hover.append(
-                    f"<b>{sample}</b><br>Locus: <b>{locus}</b><br>Length: <b>{length_val:.0f} bp</b><br>Length coverage: <b>{cov_val:.2f}%</b>"
-                )
+                
+                if is_large_dataset:
+                    # Simplified hover text for large datasets
+                    row_hover.append(
+                        f"{sample}<br>{locus}<br>{length_val:.0f}bp<br>{cov_val:.1f}%"
+                    )
+                else:
+                    # Full hover text for smaller datasets
+                    row_hover.append(
+                        f"<b>{sample}</b><br>Locus: <b>{locus}</b><br>Length: <b>{length_val:.0f} bp</b><br>Length coverage: <b>{cov_val:.2f}%</b>"
+                    )
             hover.append(row_hover)
         return hover
 
@@ -735,8 +756,9 @@ def main(args):
     """Main function"""
     
     # Calculate sequence lengths
+    heatmap_cwd = os.path.dirname(args.output_heatmap)
     if not args.output_seq_lengths:
-        args.output_seq_lengths = os.path.join(os.getcwd(), "seq_lengths.tsv")
+        args.output_seq_lengths = os.path.join(heatmap_cwd, "seq_lengths.tsv")
         logger.info(f"No output path specified for sequence lengths, using default: {args.output_seq_lengths}")
     
     df = calculate_seq_lengths(args.input_dir, args.species_list, 
