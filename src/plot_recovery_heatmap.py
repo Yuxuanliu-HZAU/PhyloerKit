@@ -433,7 +433,7 @@ def create_plotly_html_heatmap(df, args):
                 cmin=0,
                 cmax=100,
                 showscale=False,
-                line=dict(color="rgb(8,8,8)", width=0.5),
+                line=dict(color="rgb(8,8,8)", width=0),
             ),
             showlegend=False,
             name="Samples per locus",
@@ -478,7 +478,7 @@ def create_plotly_html_heatmap(df, args):
                 cmin=0,
                 cmax=100,
                 showscale=False,
-                line=dict(color="rgb(8,8,8)", width=0.5),
+                line=dict(color="rgb(8,8,8)", width=0),
             ),
             showlegend=False,
             name="Loci per sample",
@@ -490,6 +490,7 @@ def create_plotly_html_heatmap(df, args):
         row=2,
         col=2,
     )
+    fig.update_layout(bargap=0.1)
 
     # Buttons for sorting by total recovery of each sample and each locus (similar idea to stage2_report)
     buttons = []
@@ -577,7 +578,7 @@ def create_plotly_html_heatmap(df, args):
             linecolor="black",
             linewidth=1.2,
             showline=True,
-            mirror=True,
+            mirror=False,
             ticks="",
             domain=[0, 0.95],
         ),
@@ -587,7 +588,7 @@ def create_plotly_html_heatmap(df, args):
             linewidth=1.2,
             showline=True,
             showgrid=False,
-            mirror=True,
+            mirror=False,
             ticks="outside",
             domain=[top_bar_domain_start, 1],
         ),
@@ -625,7 +626,7 @@ def create_plotly_html_heatmap(df, args):
             linewidth=1.2,
             showline=True,
             showgrid=False,
-            mirror=True,
+            mirror=False,
             ticks="outside",
             domain=[0.955, 1],
         ),
@@ -636,7 +637,7 @@ def create_plotly_html_heatmap(df, args):
             linecolor="black",
             linewidth=1.2,
             showline=True,
-            mirror=True,
+            mirror=False,
             ticks="",
             domain=[0, main_heatmap_domain_end],
             # Reverse the right bar y-axis so its visual order matches the
