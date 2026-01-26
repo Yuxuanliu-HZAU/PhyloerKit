@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 import argparse
 import subprocess
+from pathlib import Path
 import re
 import os
 from Bio import Phylo
@@ -22,6 +23,28 @@ import rpy2.robjects as ro
 from rpy2.robjects.packages import importr, isinstalled
 from rpy2.robjects import pandas2ri, numpy2ri
 from rpy2.robjects.conversion import localconverter
+
+def ensure_absolute_path(path):
+    """
+    If the input path is relative, convert it to an absolute path.
+    If it is already absolute, return it unchanged.
+
+    Parameters
+    ----------
+    path : str or Path
+        Input file or directory path.
+
+    Returns
+    -------
+    Path
+        Absolute path.
+    """
+    p = Path(path)
+
+    if not p.is_absolute():
+        p = p.resolve()
+
+    return p
 
 def print_with_timestamp(message):
     """Print message with timestamp"""
@@ -753,10 +776,10 @@ def main():
     print("\033[38;5;39m" + logo + "\033[0m")
     
     parser = argparse.ArgumentParser(description=f"Automated MCMCTree workflow: Takes a phylogenetic tree (Newick format), calibration config file, and a directory of sequence alignments (FASTA format) as input.\n Automatically runs MCMCTree to perform divergence time estimation, generates a time-calibrated tree, and produces a convergence analysis plot to assess MCMC chain reliability.")
-    parser.add_argument("-it", "--input_tree", required=True, type=str, help="Input tree file (only Newick format)")
-    parser.add_argument("-ic", "--input_config", required=True, type=str, help="Calibration points config file (.config format)")
-    parser.add_argument("-o", "--output_dir", default=".", type=str, help="Output directory (default: .)")
-    parser.add_argument("-fd", "--fasta_dir", required=True, type=str, help="The directory containing all alignments files (fasta format)")
+    parser.add_argument("-it", "--input_tree", required=True, type=lambda x: ensure_absolute_path(x), help="Input tree file (only Newick format)")
+    parser.add_argument("-ic", "--input_config", required=True, type=lambda x: ensure_absolute_path(x), help="Calibration points config file (.config format)")
+    parser.add_argument("-o", "--output_dir", default=".", type=lambda x: ensure_absolute_path(x), help="Output directory (default: .)")
+    parser.add_argument("-fd", "--fasta_dir", required=True, type=lambda x: ensure_absolute_path(x), help="The directory containing all alignments files (fasta format)")
     parser.add_argument("-p", "--prefix", default="mcmctree", type=str, help="Prefix for the output file (default: mcmctree)")
     parser.add_argument("-bi", "--burn_in", default=200000, type=int, help="Number of burnin for running MCMCTree (default: 200000)")
     parser.add_argument("-sf", "--sample_freq", default=10, type=int, help="Number of sample frequency for running MCMCTree (default: 10)")
@@ -785,9 +808,15 @@ def main():
     args = parser.parse_args()
 
     try:
+        print("Input tree: ", args.input_tree)
+        print("Input config: ", args.input_config)
+        print("Input alignments (FASTA format) directory: ", args.fasta_dir)
+        print("Output directory: ", args.output_dir)
+        
         # Step 0: change the working directory to the output directory
         print()
         print_with_timestamp("Step 0: Preparing output directory...")
+        os.chdir(args.output_dir)
         
         # Create output directory if it doesn't exist
         if not os.path.exists(args.output_dir):
@@ -972,8 +1001,10 @@ def main():
         nexus_to_newick_rescale(args.prefix + ".MCMCTree_dated.tre", args.prefix + ".MCMCTree_withoutHPD_dated.newick.tre", scale=100)
         if not os.path.exists(args.prefix + ".MCMCTree_withoutHPD_dated.newick.tre"):
             raise RuntimeError(f"\n❌ Conversion failed")
+            print()
         else:
             print_with_timestamp("✓ Conversion completed.")
+            print()
 
     except Exception as e:
         print()
