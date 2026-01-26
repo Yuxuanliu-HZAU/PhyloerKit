@@ -993,7 +993,7 @@ def main():
             except Exception as e:
                 raise RuntimeError(f"Tree plotting failed: {str(e)}")
         else:
-            print_with_timestamp(f"The tree is not plotted.\n  Please run the script with the --plot_tree option to plot the tree.")
+            print_with_timestamp(f"The time tree is not plotted.\n  Please run the script with the --plot_tree option to plot the tree.")
         
         # Step 11: Convert the MCMCTree output NEXUS file into Newick file, scale the divergence time and remove the 95% HPD
         print()
@@ -1003,7 +1003,7 @@ def main():
             raise RuntimeError(f"\n❌ Conversion failed")
             print()
         else:
-            print_with_timestamp("✓ Conversion completed.")
+            print_with_timestamp(f"✓ Conversion completed.\n  The time tree without 95% HPD and in newick format is generated in {os.path.join(args.output_dir, f'{args.prefix}.MCMCTree_withoutHPD_dated.newick.tre')}")
             print()
 
     except Exception as e:
