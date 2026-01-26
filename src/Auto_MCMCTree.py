@@ -337,7 +337,7 @@ def apply_calibrations_to_tree(config_file, tree_file, output_tree, precision, t
         for name in [calibration['species1'], calibration['species2']]:
             found = list(tree.find_elements(name=name))
             if not found:
-                raise ValueError(f"Failed to find the species '{name}' in the tree file: {tree_file}")
+                raise ValueError(f"The species '{name}' in the calibration scheme file cannot be found in your input tree file.")
             terminals.extend(found)
         
         if len(terminals) != 2:
@@ -640,6 +640,99 @@ def clean_directory(directory):
         except Exception as e:
             print_with_timestamp(f"Error: Failed to delete {file_path}. Reason: {e}")
 
+def nexus_to_newick_rescale(
+    nexus_file,
+    out_newick_file,
+    scale=100.0
+):
+    """
+    1. Extract Newick tree from NEXUS file
+    2. Multiply all branch lengths by scale factor
+    3. Remove all [] and their contents (e.g., 95% HPD)
+
+    Parameters
+    ----------
+    nexus_file : str
+        Input NEXUS file path
+    out_newick_file : str
+        Output Newick file path
+    scale : float
+        Branch length scaling factor (default 100)
+    """
+
+    # ---------- 1. Read file ----------
+    with open(nexus_file, "r") as f:
+        text = f.read()
+
+    # ---------- 2. Extract Newick after UTREE / TREE ----------
+    # Use more direct method: based on your NEXUS format, tree is on one line
+    newick = None
+    
+    # Method 1: Direct search for UTREE line and manual parsing
+    for line in text.split('\n'):
+        if 'UTREE' in line and '=' in line:
+            # Find UTREE line
+            parts = line.split('=', 1)
+            if len(parts) == 2:
+                tree_part = parts[1].strip()
+                # Remove trailing semicolon
+                if tree_part.endswith(';'):
+                    tree_part = tree_part[:-1].strip()
+                # Ensure starts with bracket and ends with bracket
+                if tree_part.startswith('('):
+                    # Manually find matching closing bracket
+                    bracket_count = 0
+                    for i, char in enumerate(tree_part):
+                        if char == '(':
+                            bracket_count += 1
+                        elif char == ')':
+                            bracket_count -= 1
+                            if bracket_count == 0:
+                                # Found matching closing bracket
+                                newick = tree_part[:i+1]
+                                break
+                    
+                    # If no balanced brackets found, use entire string
+                    if not newick:
+                        newick = tree_part
+                    break
+    
+    if not newick:
+        # Method 2: Use regex, but more permissive pattern
+        m = re.search(r'UTREE\s+\d+\s*=\s*(\([^;]*\))\s*;', text, flags=re.S)
+        if m:
+            newick = m.group(1).strip()
+    
+    if not newick:
+        # Method 3: Most permissive regex
+        m = re.search(r'UTREE.*?=\s*(\(.*?\))\s*;', text, flags=re.S)
+        if m:
+            newick = m.group(1).strip()
+    
+    if not newick:
+        raise ValueError("TREE / UTREE not found in NEXUS file")
+
+    # ---------- 3. Remove all [ ... ] annotations ----------
+    newick = re.sub(r'\[.*?\]', '', newick)
+
+    # ---------- 4. Scale branch lengths ----------
+    def scale_branch(match):
+        length = float(match.group(1))
+        return f":{length * scale:.6f}"
+
+    newick = re.sub(
+        r':\s*([0-9.eE+-]+)',
+        scale_branch,
+        newick
+    )
+
+    # ---------- 5. Clean extra whitespace ----------
+    newick = re.sub(r'\s+', '', newick)
+
+    # ---------- 6. Write output ----------
+    with open(out_newick_file, "w") as f:
+        f.write(newick + ";\n")
+
 def main():
     logo = r"""
      █████╗ ██╗   ██╗████████╗ ██████╗       ███╗   ███╗ ██████╗███╗   ███╗ ██████╗████████╗██████╗ ███████╗███████╗
@@ -872,6 +965,15 @@ def main():
                 raise RuntimeError(f"Tree plotting failed: {str(e)}")
         else:
             print_with_timestamp(f"The tree is not plotted.\n  Please run the script with the --plot_tree option to plot the tree.")
+        
+        # Step 11: Convert the MCMCTree output NEXUS file into Newick file, scale the divergence time and remove the 95% HPD
+        print()
+        print_with_timestamp("Step 11: Converting the MCMCTree output NEXUS file into Newick file, scaling the divergence time and removing the 95% HPD...")
+        nexus_to_newick_rescale(args.prefix + ".MCMCTree_dated.tre", args.prefix + ".MCMCTree_withoutHPD_dated.newick.tre", scale=100)
+        if not os.path.exists(args.prefix + ".MCMCTree_withoutHPD_dated.newick.tre"):
+            raise RuntimeError(f"\n❌ Conversion failed")
+        else:
+            print_with_timestamp("✓ Conversion completed.")
 
     except Exception as e:
         print()
