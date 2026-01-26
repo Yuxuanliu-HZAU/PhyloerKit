@@ -128,20 +128,20 @@ We prepared two suites of input files (with different config files for calibrati
 - Run the first type of input files
 ```bash
 python ./src/Auto_MCMCTree.py \
--it ./example_dataset/Test-Auto-MCMCTree/input_ASTRAL_HybSuite_RLWP_sorted_rr.tre \
--ic ./example_dataset/Test-Auto-MCMCTree/input1_Elaeagnaceae.config \
--fd ./example_dataset/Test-Auto-MCMCTree/input1_alignments/ \
--o ./example_dataset/Test-Auto-MCMCTree/output1/ \
+-it ./example_dataset/input_ASTRAL_HybSuite_RLWP_sorted_rr.tre \
+-ic ./example_dataset/input1_Elaeagnaceae.config \
+-fd ./example_dataset/input1_alignments/ \
+-o ./example_dataset/output1/ \
 --plot_tree -p Eleagnus_1
 ```
 
 - Run the second type of input files
 ```bash
 python ./src/Auto_MCMCTree.py \
--it ./example_dataset/Test-Auto-MCMCTree/input_ASTRAL_HybSuite_RLWP_sorted_rr.tre \
--ic ./example_dataset/Test-Auto-MCMCTree/input2_Elaeagnaceae.config \
--fd ./example_dataset/Test-Auto-MCMCTree/input2_alignments/ \
--o ./example_dataset/Test-Auto-MCMCTree/output2/ \
+-it ./example_dataset/input_ASTRAL_HybSuite_RLWP_sorted_rr.tre \
+-ic ./example_dataset/input2_Elaeagnaceae.config \
+-fd ./example_dataset/input2_alignments/ \
+-o ./example_dataset/output2/ \
 --plot_tree -p Eleagnus_2
 ```
 
