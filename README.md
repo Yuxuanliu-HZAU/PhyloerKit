@@ -125,7 +125,8 @@ cd ./PhyloerKit/
 #### Step2: Run the script
 We prepared two suites of input files (with different config files for calibration)
 
-- Run the first type of input files
+- Run the script with the first type of input files  
+(the config file **`input1_Elaeagnaceae.config`** and the directory **`input1_alignments`**)
 ```bash
 python ./src/Auto_MCMCTree.py \
 -it ./example_dataset/input_ASTRAL_HybSuite_RLWP_sorted_rr.tre \
@@ -135,7 +136,8 @@ python ./src/Auto_MCMCTree.py \
 --plot_tree -p Eleagnus_1
 ```
 
-- Run the second type of input files
+- Run the script with the second type of input files  
+(the config file **`input2_Elaeagnaceae.config`** and the directory **`input2_alignments`**)
 ```bash
 python ./src/Auto_MCMCTree.py \
 -it ./example_dataset/input_ASTRAL_HybSuite_RLWP_sorted_rr.tre \
