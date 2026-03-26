@@ -55,6 +55,39 @@ def print_with_timestamp(message):
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f"[{timestamp}] {message}")
 
+def detect_phylip_partitions(phylip_file):
+    """
+    Detect the number of partitions in a PHYLIP file by counting lines with two numbers.
+    
+    Parameters:
+        phylip_file: Path to the PHYLIP file
+        
+    Returns:
+        int: Number of partitions found
+    """
+    partition_count = 0
+    
+    try:
+        with open(phylip_file, 'r') as f:
+            lines = f.readlines()
+            
+        for line in lines:
+            line = line.strip()
+            # Skip empty lines and header line
+            if not line or line.startswith('#'):
+                continue
+                
+            # Check if line contains exactly two numbers (partition info)
+            parts = line.split()
+            if len(parts) == 2 and all(part.isdigit() for part in parts):
+                partition_count += 1
+                
+    except Exception as e:
+        print_with_timestamp(f"Error detecting partitions in {phylip_file}: {e}")
+        return 5  # Return default value on error
+        
+    return partition_count if partition_count > 0 else 5
+
 def convert_single_fasta_to_phylip(fasta_file, output_file):
     """
     Convert a single FASTA file to PHYLIP format:
@@ -159,7 +192,7 @@ def write_ctl_file(prefix, ndata, seqtype, clock, RootAge, burn_in, sample_freq,
         ctl_file.write(f"         alpha = 0.5\n")
         ctl_file.write(f"         ncatG = 5\n\n")
         ctl_file.write(f"     cleandata = {cleandata}\n\n")
-        ctl_file.write(f"       BDparas = 1 1 0.1\n")
+        ctl_file.write(f"       BDparas = C 1 1 0.1\n")
         ctl_file.write(f"   kappa_gamma = 6 2\n")
         ctl_file.write(f"   alpha_gamma = 1 1\n\n")
         ctl_file.write(f"   rgene_gamma = 2 20 1\n")
@@ -646,15 +679,21 @@ def plot_mcmctree(tree_path, output_prefix="mcmctree_plot",
             print_with_timestamp(f"Error occurred while executing R code: {str(e)}")
             return None
 
-def clean_directory(directory):
+def clean_directory(directory, preserve_file=None):
     """
-    Clean all files in the specified directory
+    Clean all files in the specified directory, optionally preserving a specific file
     
     Parameters:
         directory: Path to the directory to be cleaned
+        preserve_file: Path to file that should not be deleted (optional)
     """
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
+        
+        # Skip the preserve file if specified
+        if preserve_file and os.path.abspath(file_path) == os.path.abspath(preserve_file):
+            continue
+            
         try:
             if os.path.isfile(file_path):
                 os.unlink(file_path)
@@ -779,14 +818,18 @@ def main():
     parser.add_argument("-it", "--input_tree", required=True, type=lambda x: ensure_absolute_path(x), help="Input tree file (only Newick format)")
     parser.add_argument("-ic", "--input_config", required=True, type=lambda x: ensure_absolute_path(x), help="Calibration points config file (.config format)")
     parser.add_argument("-o", "--output_dir", default=".", type=lambda x: ensure_absolute_path(x), help="Output directory (default: .)")
-    parser.add_argument("-fd", "--fasta_dir", required=True, type=lambda x: ensure_absolute_path(x), help="The directory containing all alignments files (fasta format)")
+    
+    # Create mutually exclusive group for input format
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("-fd", "--fasta_dir", type=lambda x: ensure_absolute_path(x), help="The directory containing all alignments files (fasta format)")
+    input_group.add_argument("-phy", "--phylip", type=lambda x: ensure_absolute_path(x), help="The input file with phylip format")
     parser.add_argument("-p", "--prefix", default="mcmctree", type=str, help="Prefix for the output file (default: mcmctree)")
     parser.add_argument("-bi", "--burn_in", default=200000, type=int, help="Number of burnin for running MCMCTree (default: 200000)")
     parser.add_argument("-sf", "--sample_freq", default=10, type=int, help="Number of sample frequency for running MCMCTree (default: 10)")
     parser.add_argument("-ns", "--num_samples", default=50000, type=int, help="Number of samples for running MCMCTree (default: 50000)")
     parser.add_argument("-rs", "--recommended_sampling", choices=["small", "medium", "high", "super"], help="The recommended sampling scheme for running MCMCTree.")
     parser.add_argument("-ap", "--age_precision", default=4, type=int, help="Precision for the age values in the config file after dividing by 100 (default: 4)")
-    parser.add_argument("-ndata", default=5, type=int, help="Number of data for running MCMCTree (default: 5)")
+    parser.add_argument("-ndata", default=5, type=int, help="Number of partitions of alignments for running MCMCTree (auto-detected from PHYLIP file if not specified, default: 5)")
     parser.add_argument("-seqtype", default=0, type=int, help="Sequence type for running MCMCTree (0: nucleotides; 1:codons; 2:AAs; default: 0)")
     parser.add_argument("-clock", default=2, type=int, help="Use clock for running MCMCTree (1: global clock; 2: independent rates; 3: correlated rates default: 2)")
     parser.add_argument("-RootAge", default="'<1'", type=str, help="Age constraint on root age (used if no fossil for root, default: <1)")
@@ -816,31 +859,65 @@ def main():
         # Step 0: change the working directory to the output directory
         print()
         print_with_timestamp("Step 0: Preparing output directory...")
-        os.chdir(args.output_dir)
-        
-        # Create output directory if it doesn't exist
         if not os.path.exists(args.output_dir):
             os.makedirs(args.output_dir)
-            print_with_timestamp("Created output directory")
-        else:
-            # Clean directory if it exists and is not empty
-            if os.listdir(args.output_dir):
-                print_with_timestamp("Cleaning output directory...")
-                clean_directory(args.output_dir)
-                print_with_timestamp("Output directory cleaned")
-        
-        # Change to output directory
         os.chdir(args.output_dir)
-        print_with_timestamp("✓ Working directory prepared successfully")
-
+        
         # Step 1: Convert the fasta files to the merged phylip file
         print()
         print_with_timestamp("Step 1: Converting FASTA files to PHYLIP format...")
-        process_and_merge_fastas(args.fasta_dir, args.prefix + ".phy")
-        if not os.path.exists(args.prefix + ".phy"):
-            raise RuntimeError("PHYLIP file generation failed")
-        print_with_timestamp("✓ FASTA to PHYLIP conversion completed")
-
+        if args.phylip:
+            print_with_timestamp("Using provided PHYLIP file: " + str(args.phylip))
+            
+            # Check if phylip file exists
+            if not os.path.exists(args.phylip):
+                raise FileNotFoundError(f"PHYLIP file not found: {args.phylip}")
+            
+            # Create output directory if it doesn't exist
+            if not os.path.exists(args.output_dir):
+                os.makedirs(args.output_dir)
+                print_with_timestamp("Created output directory")
+            else:
+                # Clean directory if it exists and is not empty, preserving the phylip file
+                if os.listdir(args.output_dir):
+                    print_with_timestamp("Cleaning output directory...")
+                    clean_directory(args.output_dir, preserve_file=args.phylip)
+                    print_with_timestamp("Output directory cleaned")
+            
+            # Change to output directory
+            os.chdir(args.output_dir)
+            print_with_timestamp("✓ Working directory prepared successfully")
+            
+            # Copy the phylip file to new name (skip if same file)
+            input_phylip_path = Path(str(args.phylip))
+            output_phylip_path = Path(str(args.prefix) + ".phy")
+            
+            if input_phylip_path.name != output_phylip_path.name:
+                shutil.copy(str(args.phylip), str(args.prefix) + ".phy")
+                print_with_timestamp(f"Copied {input_phylip_path.name} to {output_phylip_path.name}")
+            else:
+                print_with_timestamp(f"Using existing file {output_phylip_path.name} in the output directory.")
+        else:
+            # Create output directory if it doesn't exist
+            if not os.path.exists(args.output_dir):
+                os.makedirs(args.output_dir)
+                print_with_timestamp("Created output directory")
+            else:
+                # Clean directory if it exists and is not empty
+                if os.listdir(args.output_dir):
+                    print_with_timestamp("Cleaning output directory...")
+                    clean_directory(args.output_dir)
+                    print_with_timestamp("Output directory cleaned")
+            
+            # Change to output directory
+            os.chdir(args.output_dir)
+            print_with_timestamp("✓ Working directory prepared successfully")
+            
+            process_and_merge_fastas(args.fasta_dir, args.prefix + ".phy")
+            if not os.path.exists(args.prefix + ".phy"):
+                raise RuntimeError("PHYLIP file generation failed")
+            print_with_timestamp("✓ FASTA to PHYLIP conversion completed")
+        
         # Step 2: remove the branch lengths and support from the tree
         print()
         print_with_timestamp("Step 2: Processing input tree...")
@@ -876,7 +953,13 @@ def main():
         # Step 4: write the ctl file for running MCMCTree
         print()
         print_with_timestamp("Step 4: Writing the control file for MCMCTree (0th round)...")
-        write_ctl_file(args.prefix, args.ndata, args.seqtype, args.clock, args.RootAge,
+        
+        # Detect number of partitions from phylip file
+        detected_ndata = detect_phylip_partitions(args.prefix + ".phy")
+        print_with_timestamp(f"Detected {detected_ndata} partitions in PHYLIP file")
+        
+        # Use detected partition count instead of default
+        write_ctl_file(args.prefix, detected_ndata, args.seqtype, args.clock, args.RootAge,
                       args.burn_in, args.sample_freq, args.num_samples, args.model,
                       args.cleandata, args.print)
         print_with_timestamp("✓ Control file for MCMCTree (0th round) written successfully")
