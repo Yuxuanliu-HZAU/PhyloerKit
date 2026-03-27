@@ -192,7 +192,7 @@ def write_ctl_file(prefix, ndata, seqtype, clock, RootAge, burn_in, sample_freq,
         ctl_file.write(f"         alpha = 0.5\n")
         ctl_file.write(f"         ncatG = 5\n\n")
         ctl_file.write(f"     cleandata = {cleandata}\n\n")
-        ctl_file.write(f"       BDparas = C 1 1 0.1\n")
+        ctl_file.write(f"       BDparas = 1 1 0.1 C\n")
         ctl_file.write(f"   kappa_gamma = 6 2\n")
         ctl_file.write(f"   alpha_gamma = 1 1\n\n")
         ctl_file.write(f"   rgene_gamma = 2 20 1\n")
